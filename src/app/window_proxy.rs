@@ -11,7 +11,7 @@ impl<'a> Window<'a> {
         }
     }
 
-    pub fn get_mouse_pos(&self) -> Option<(u32, u32)> {
+    pub fn mouse_pos(&self) -> Option<(u32, u32)> {
         let (x, y) = self.window_ref.get_cursor_pos();
         let (window_width, window_height) = self.window_ref.get_size();
         let x_int = x as i32;
@@ -25,35 +25,35 @@ impl<'a> Window<'a> {
         }
     }
 
-    fn get_mouse_button_pressed(&self, button: glfw::MouseButton) -> bool {
+    fn mouse_button_pressed(&self, button: glfw::MouseButton) -> bool {
         self.window_ref.get_mouse_button(button) != glfw::Action::Release
     }
 
-    pub fn get_mouse_left_button_pressed(&self) -> bool {
-        self.get_mouse_button_pressed(glfw::MouseButtonLeft)
+    pub fn mouse_left_button_pressed(&self) -> bool {
+        self.mouse_button_pressed(glfw::MouseButtonLeft)
     }
 
-    pub fn get_mouse_right_button_pressed(&self) -> bool {
-        self.get_mouse_button_pressed(glfw::MouseButtonRight)
+    pub fn mouse_right_button_pressed(&self) -> bool {
+        self.mouse_button_pressed(glfw::MouseButtonRight)
     }
 
-    fn get_mouse_button_released(&self, button: glfw::MouseButton) -> bool {
+    fn mouse_button_released(&self, button: glfw::MouseButton) -> bool {
         self.window_ref.get_mouse_button(button) == glfw::Action::Release
     }
 
-    pub fn get_mouse_left_button_released(&self) -> bool {
-        self.get_mouse_button_released(glfw::MouseButtonLeft)
+    pub fn mouse_left_button_released(&self) -> bool {
+        self.mouse_button_released(glfw::MouseButtonLeft)
     }
 
-    pub fn get_mouse_right_button_released(&self) -> bool {
-        self.get_mouse_button_released(glfw::MouseButtonRight)
+    pub fn mouse_right_button_released(&self) -> bool {
+        self.mouse_button_released(glfw::MouseButtonRight)
     }
 
-    pub fn get_process_address(&mut self, process_name: &str) -> glfw::GLProc {
+    pub fn process_address(&mut self, process_name: &str) -> glfw::GLProc {
         self.window_ref.get_proc_address(process_name)
     }
 
-    pub fn get_size(&self) -> (u32, u32) {
+    pub fn size(&self) -> (u32, u32) {
         let (w, h) = self.window_ref.get_size();
         (w as u32, h as u32)
     }

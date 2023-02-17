@@ -2,6 +2,7 @@ use std::ptr;
 use std::ffi::CStr;
 use std::ffi::CString;
 use gl;
+use nalgebra_glm as glm;
 
 #[derive(Debug, Clone, Copy)]
 pub enum ShaderType {
@@ -26,11 +27,13 @@ impl ShaderProgram {
 
             layout (location = 0) in vec2 a_pos;
             layout (location = 1) in vec3 a_col;
+            layout (location = 2) in float a_depth;
+            uniform mat4 u_VP;
             out vec3 col;
 
             void main()
             {
-                gl_Position = vec4(a_pos, 0.0f, 1.0f);
+                gl_Position = u_VP * vec4(a_pos, a_depth, 1.0f);
                 col = a_col;
             };\0";
         let vertex = unsafe {
@@ -154,7 +157,7 @@ impl QuadRenderer {
         }
     }
 
-    pub fn begin_batch(&mut self, shader: &ShaderProgram, color: (f32, f32, f32)) {
+    pub fn begin_batch(&mut self, shader: &ShaderProgram, ortho_matrix: glm::Mat4, color: (f32, f32, f32), depth: f32) {
         unsafe {
             gl::UseProgram(shader.get_program_gl_id());
 
@@ -164,8 +167,14 @@ impl QuadRenderer {
 
             let col_location = gl::GetAttribLocation(shader.get_program_gl_id(), CStr::from_bytes_with_nul(b"a_col\0").unwrap().as_ptr());
             gl::VertexAttrib3f(col_location as u32, color.0, color.1, color.2);
+            let col_location = gl::GetAttribLocation(shader.get_program_gl_id(), CStr::from_bytes_with_nul(b"a_depth\0").unwrap().as_ptr());
+            gl::VertexAttrib1f(col_location as u32, depth);
             gl::EnableVertexAttribArray(0);
             gl::VertexAttribPointer(0, 2, gl::FLOAT, gl::FALSE, 8, ptr::null());
+
+
+            let location = gl::GetUniformLocation( shader.get_program_gl_id(), CStr::from_bytes_with_nul(b"u_VP\0").unwrap().as_ptr());
+	        gl::UniformMatrix4fv( location, 1, gl::FALSE, ortho_matrix.as_ptr());
         }
 
         self.vertices.clear();
@@ -182,7 +191,7 @@ impl QuadRenderer {
         }
     }
 
-    pub fn push_quad(&mut self, pos: (f32, f32), size: (f32, f32)) {
+    pub fn push_quad(&mut self, pos: (u32, u32), size: (u32, u32)) {
         if self.vertices.len() > self.max_buffer_size {
             self.flush();
         }
@@ -193,19 +202,19 @@ impl QuadRenderer {
         let bottom_right = (pos.0 + size.0, pos.1 + size.1);
 
         let top_left_index = self.vertices.len() as u32 / 2;
-        self.vertices.push(top_left.0);
-        self.vertices.push(top_left.1);
+        self.vertices.push(top_left.0 as f32);
+        self.vertices.push(top_left.1 as f32);
 
-        self.vertices.push(bottom_left.0);
-        self.vertices.push(bottom_left.1);
+        self.vertices.push(bottom_left.0 as f32);
+        self.vertices.push(bottom_left.1 as f32);
         let bottom_left_index = top_left_index + 1;
 
-        self.vertices.push(bottom_right.0);
-        self.vertices.push(bottom_right.1);
+        self.vertices.push(bottom_right.0 as f32);
+        self.vertices.push(bottom_right.1 as f32);
         let bottom_right_index = bottom_left_index + 1;
 
-        self.vertices.push(top_right.0);
-        self.vertices.push(top_right.1);
+        self.vertices.push(top_right.0 as f32);
+        self.vertices.push(top_right.1 as f32);
         let top_right_index = bottom_right_index + 1;
 
         self.indices.push(top_left_index);
@@ -218,6 +227,10 @@ impl QuadRenderer {
     }
 
     fn flush(&mut self) {
+        if self.vertices.len() == 0 {
+            return;
+        }
+
         unsafe {
             gl::BufferData(gl::ARRAY_BUFFER, (self.vertices.len() * 4) as isize, self.vertices.as_slice().as_ptr().cast(), gl::DYNAMIC_DRAW);
             gl::BufferData(gl::ELEMENT_ARRAY_BUFFER, (self.indices.len() * 4) as isize, self.indices.as_slice().as_ptr().cast(), gl::DYNAMIC_DRAW);
@@ -257,7 +270,7 @@ impl LineRenderer {
         }
     }
 
-    pub fn begin_line_strip(&mut self, shader: &ShaderProgram, starting_point: (f32, f32), color: (f32, f32, f32)) {
+    pub fn begin_line_strip(&mut self, shader: &ShaderProgram, ortho_matrix: glm::Mat4, starting_point: (u32, u32), color: (f32, f32, f32), depth: f32) {
         unsafe {
             gl::UseProgram(shader.get_program_gl_id());
 
@@ -266,13 +279,18 @@ impl LineRenderer {
 
             let col_location = gl::GetAttribLocation(shader.get_program_gl_id(), CStr::from_bytes_with_nul(b"a_col\0").unwrap().as_ptr());
             gl::VertexAttrib3f(col_location as u32, color.0, color.1, color.2);
+            let col_location = gl::GetAttribLocation(shader.get_program_gl_id(), CStr::from_bytes_with_nul(b"a_depth\0").unwrap().as_ptr());
+            gl::VertexAttrib1f(col_location as u32, depth);
             gl::EnableVertexAttribArray(0);
             gl::VertexAttribPointer(0, 2, gl::FLOAT, gl::FALSE, 8, ptr::null());
+
+            let location = gl::GetUniformLocation( shader.get_program_gl_id(), CStr::from_bytes_with_nul(b"u_VP\0").unwrap().as_ptr());
+	        gl::UniformMatrix4fv( location, 1, gl::FALSE, ortho_matrix.as_ptr());
         }
 
         self.vertices.clear();
-        self.vertices.push(starting_point.0);
-        self.vertices.push(starting_point.1);
+        self.vertices.push(starting_point.0 as f32);
+        self.vertices.push(starting_point.1 as f32);
     }
 
     pub fn end_line_strip(&mut self) {
@@ -284,7 +302,7 @@ impl LineRenderer {
         }
     }
 
-    pub fn push_point(&mut self, point: (f32, f32)) {
+    pub fn push_point(&mut self, point: (u32, u32)) {
         if self.vertices.len() == self.max_vertices {
             let last_point_y = *self.vertices.last().unwrap();
             self.vertices.pop();
@@ -293,15 +311,16 @@ impl LineRenderer {
             self.flush();
             self.vertices.push(last_point_x);
             self.vertices.push(last_point_y);
-            self.vertices.push(point.0);
-            self.vertices.push(point.1);
+            self.vertices.push(point.0 as f32);
+            self.vertices.push(point.1 as f32);
         } else {
-            self.vertices.push(point.0);
-            self.vertices.push(point.1);
+            self.vertices.push(point.0 as f32);
+            self.vertices.push(point.1 as f32);
         }
     }
 
     fn flush(&mut self) {
+
         unsafe {
             gl::BufferData(gl::ARRAY_BUFFER, (self.vertices.len() * 4) as isize, self.vertices.as_slice().as_ptr().cast(), gl::DYNAMIC_DRAW);
             gl::DrawArrays(gl::LINE_STRIP, 0, (self.vertices.len() / 2) as i32)
@@ -315,34 +334,43 @@ pub struct Renderer {
     shader_program: ShaderProgram,
     quad_renderer: QuadRenderer,
     line_renderer: LineRenderer,
+    ortho_matrix: glm::Mat4,
 }
 
 impl Renderer {
-    pub fn new(max_quads_per_batch: usize, max_lines_per_batch: usize) -> Self {
+    pub fn new(viewport_size: (u32, u32), max_quads_per_batch: usize, max_lines_per_batch: usize) -> Self {
         Self {
             quad_renderer: QuadRenderer::new(max_quads_per_batch),
             line_renderer: LineRenderer::new(max_lines_per_batch),
             shader_program: ShaderProgram::new().unwrap(),
+            ortho_matrix: glm::ortho(0.0, viewport_size.0 as f32, viewport_size.1 as f32, 0.0, -5.0, 5.0)
         }
     }
 
-    pub fn begin_quad_batch(&mut self, color: (f32, f32, f32)) {
-        self.quad_renderer.begin_batch(&self.shader_program, color);
+    pub fn set_viewport(&mut self, size: (u32, u32)) {
+        unsafe {
+            gl::Viewport(0, 0, size.0 as i32, size.1 as i32);
+        }
+        self.ortho_matrix = glm::ortho(0.0, size.0 as f32, size.1 as f32, 0.0, -5.0, 5.0);
+    }
+
+    pub fn begin_quad_batch(&mut self, color: (f32, f32, f32), depth: f32) {
+        self.quad_renderer.begin_batch(&self.shader_program, self.ortho_matrix, color, depth);
     }
 
     pub fn end_quad_batch(&mut self) {
         self.quad_renderer.end_batch();
     }
 
-    pub fn push_quad(&mut self, position: (f32, f32), size: (f32, f32)) {
+    pub fn push_quad(&mut self, position: (u32, u32), size: (u32, u32)) {
         self.quad_renderer.push_quad(position, size);
     }
 
-    pub fn begin_line_strip(&mut self, starting_point: (f32, f32), color: (f32, f32, f32)) {
-        self.line_renderer.begin_line_strip(&self.shader_program, starting_point, color);
+    pub fn begin_line_strip(&mut self, starting_point: (u32, u32), color: (f32, f32, f32), depth: f32) {
+        self.line_renderer.begin_line_strip(&self.shader_program, self.ortho_matrix, starting_point, color, depth);
     }
 
-    pub fn push_point(&mut self, point: (f32, f32)) {
+    pub fn push_point(&mut self, point: (u32, u32)) {
         self.line_renderer.push_point(point);
     }
 

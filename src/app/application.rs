@@ -59,9 +59,12 @@ impl Application {
             gl::ClearColor(0.1, 0.1, 0.1, 1.0);
         }
 
-        let renderer = gl_renderer::Renderer::new(256, 5000);
-        let gui_layer = GUILayer::new(window_proxy::Window::new(&mut window));
-        let editor_layer = EditorLayer::new();
+        let viewport = window.get_framebuffer_size();
+        let renderer = gl_renderer::Renderer::new((viewport.0 as u32, viewport.1 as u32), 256, 5000);
+
+        let side_panel_width_ratio = 0.2;
+        let gui_layer = GUILayer::new(window_proxy::Window::new(&mut window), side_panel_width_ratio);
+        let editor_layer = EditorLayer::new(window_proxy::Window::new(&mut window), side_panel_width_ratio);
         Ok(
             Self { glfw, window, events, renderer, gui_layer, editor_layer }
         )
@@ -74,8 +77,8 @@ impl Application {
             }
 
             self.gui_layer.handle_user_input(window_proxy::Window::new(&mut self.window));
-            self.gui_layer.transform_mouse_coordinates_for_editor(window_proxy::Window::new(&mut self.window));
             self.gui_layer.render(window_proxy::Window::new(&mut self.window));
+
             self.editor_layer.render(&mut self.renderer);
 
             self.window.swap_buffers();
@@ -94,7 +97,7 @@ impl Application {
         }
     }
 
-    fn event_from_glfw_event(&self, event: WindowEvent) -> Option<ApplicationEvent> {
+    fn event_from_glfw_event(&mut self, event: WindowEvent) -> Option<ApplicationEvent> {
         match event {
             WindowEvent::Size(width, height) => Some(ApplicationEvent::WindowResized{width: width as u32, height: height as u32}),
             WindowEvent::CursorPos(x, y) => {
@@ -125,9 +128,7 @@ impl Application {
                 }
             },
             WindowEvent::FramebufferSize(width, height) => {
-                unsafe {
-                    gl::Viewport(0, 0, width, height);
-                }
+                self.renderer.set_viewport((width as u32, height as u32));
                 Some(ApplicationEvent::FramebufferResized { width: width as u32, height: height as u32 })
             },
             _ => None
@@ -135,5 +136,6 @@ impl Application {
     }
 
     fn handle_event(&mut self, event: ApplicationEvent) {
+        self.editor_layer.handle_event(event, window_proxy::Window::new(&mut self.window));
     }
 }
