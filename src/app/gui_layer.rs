@@ -22,7 +22,7 @@ impl GUILayer {
             last_frame_time: Instant::now(),
             imgui_renderer,
             imgui_context,
-            editor_config: EditorConfig { larp_ratio: 0.5 },
+            editor_config: EditorConfig::default(),
             side_panel_width_ratio
         }
     }
@@ -38,6 +38,10 @@ impl GUILayer {
             imgui_io.mouse_pos = [x as f32, y as f32];
         }
         imgui_io.mouse_down = button_indeces;
+    }
+
+    pub fn editor_config(&self) -> &EditorConfig {
+        return &self.editor_config;
     }
 
     pub fn render(&mut self, window_proxy: Window) {
@@ -66,9 +70,25 @@ impl GUILayer {
             let _token = ui.push_item_width(window_width);
             ui.dummy([window_width, window_height * 0.01]);
             ui.text(format!("Frame time: {:.3}s [{} FPS]", delta_s, (1.0 / delta_s) as u32 ));
-            ui.dummy([window_width, window_height * 0.05]);
+            ui.dummy([window_width, window_height * 0.02]);
             ui.text("LARP Ratio:");
             ui.slider_float(imgui::im_str!("LARP"), &mut self.editor_config.larp_ratio, 0.0, 1.0).build();
+            ui.dummy([window_width, window_height * 0.02]);
+            ui.text("Curve sample points:");
+            ui.slider_int(imgui::im_str!("Samples"), &mut self.editor_config.samples, 10, 1000).build();
+            ui.dummy([window_width, window_height * 0.02]);
+            ui.text("Curve color:");
+            ui.color_edit(imgui::im_str!("beier curve color"), &mut self.editor_config.bezier_curve_color).flags(imgui::ImGuiColorEditFlags::NoSmallPreview).build();
+            ui.dummy([window_width, window_height * 0.02]);
+            ui.text("Control points color:");
+            ui.color_edit(imgui::im_str!("control points color"), &mut self.editor_config.control_points_color).flags(imgui::ImGuiColorEditFlags::NoSmallPreview).build();
+            ui.dummy([window_width, window_height * 0.02]);
+            ui.text("Lines color:");
+            ui.color_edit(imgui::im_str!("larp lines color"), &mut self.editor_config.control_points_strip_color).flags(imgui::ImGuiColorEditFlags::NoSmallPreview).build();
+            ui.dummy([window_width, window_height * 0.02]);
+            ui.text("LARP point color:");
+            ui.color_edit(imgui::im_str!("larp point color"), &mut self.editor_config.larp_point_color).flags(imgui::ImGuiColorEditFlags::NoSmallPreview).build();
+
         });
         self.imgui_renderer.render(ui);
     }

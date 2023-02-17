@@ -79,7 +79,7 @@ impl Application {
             self.gui_layer.handle_user_input(window_proxy::Window::new(&mut self.window));
             self.gui_layer.render(window_proxy::Window::new(&mut self.window));
 
-            self.editor_layer.render(&mut self.renderer);
+            self.editor_layer.render(&mut self.renderer, self.gui_layer.editor_config());
 
             self.window.swap_buffers();
 

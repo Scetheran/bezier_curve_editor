@@ -1,6 +1,7 @@
 use crate::app::gl_renderer::Renderer;
 use crate::app::window_proxy::Window;
 use crate::app::application_event::ApplicationEvent;
+use crate::app::editor_config::EditorConfig;
 pub struct EditorLayer {
     side_panel_width_ratio: f32,
     control_point_radius: u32,
@@ -161,14 +162,14 @@ impl EditorLayer {
         return buffer1[0];
     }
 
-    fn draw_bezier_curve(&self, renderer: &mut Renderer, samples: u32) {
+    fn draw_bezier_curve(&self, renderer: &mut Renderer, samples: u32, color: (f32, f32, f32)) {
         if self.control_points_normalized.len() <= 2 {
             return;
         }
 
         let starting_point = EditorLayer::from_normalized_control_point(self.control_points_normalized[0], self.window_size);
         let starting_point = (starting_point.0 + self.control_point_radius, starting_point.1 + self.control_point_radius);
-        renderer.begin_line_strip(starting_point, (0.1, 0.2, 0.9), 0.1);
+        renderer.begin_line_strip(starting_point, color, 0.1);
         let step = 1.0 / (samples as f32);
         let mut t = step;
         while t < 0.999 {
@@ -183,14 +184,14 @@ impl EditorLayer {
         renderer.end_line_strip();
     }
 
-    fn draw_larp_points_strip(&self, renderer: &mut Renderer) {
+    fn draw_larp_points_strip(&self, renderer: &mut Renderer, color: (f32, f32, f32)) {
         if self.control_points_normalized.len() <= 1 {
             return;
         }
 
         let starting_point = EditorLayer::from_normalized_control_point(self.control_points_normalized[0], self.window_size);
         let starting_point = (starting_point.0 + self.control_point_radius, starting_point.1 + self.control_point_radius);
-        renderer.begin_line_strip(starting_point, (0.8, 0.2, 0.2), 0.0);
+        renderer.begin_line_strip(starting_point, color, 0.0);
         for control_point in self.control_points_normalized.iter().skip(1) {
             let cp = EditorLayer::from_normalized_control_point(*control_point, self.window_size);
             renderer.push_point((cp.0 + self.control_point_radius, cp.1 + self.control_point_radius));
@@ -198,12 +199,12 @@ impl EditorLayer {
         renderer.end_line_strip();
     }
 
-    fn draw_control_points(&self, renderer: &mut Renderer) {
+    fn draw_control_points(&self, renderer: &mut Renderer, color: (f32, f32, f32)) {
         if self.control_points_normalized.len() == 0 {
             return;
         }
 
-        renderer.begin_quad_batch((0.7, 0.6, 0.1), 0.4);
+        renderer.begin_quad_batch(color, 0.4);
         for control_point in &self.control_points_normalized {
             renderer.push_quad(
                 EditorLayer::from_normalized_control_point(*control_point, self.window_size),
@@ -212,10 +213,23 @@ impl EditorLayer {
         renderer.end_quad_batch();
     }
 
-    pub fn render(&self, renderer: &mut Renderer) {
-        self.draw_larp_points_strip(renderer);
-        self.draw_bezier_curve(renderer, 10);
-        self.draw_control_points(renderer);
+    fn draw_larp_point(&self, renderer: &mut Renderer, t: f32, color: (f32, f32, f32)) {
+        if self.control_points_normalized.len() <= 2 {
+            return;
+        }
+
+        let larped_point = self.interpolated_point(t);
+        let larped_point = EditorLayer::from_normalized_control_point(larped_point, self.window_size);
+        renderer.begin_quad_batch(color, 0.3);
+        renderer.push_quad((larped_point.0, larped_point.1), (2 * self.control_point_radius + 1, 2 * self.control_point_radius + 1));
+        renderer.end_quad_batch();
+    }
+
+    pub fn render(&self, renderer: &mut Renderer, config: &EditorConfig) {
+        self.draw_larp_points_strip(renderer, (config.control_points_strip_color[0], config.control_points_strip_color[1], config.control_points_strip_color[2]));
+        self.draw_bezier_curve(renderer, config.samples as u32, (config.bezier_curve_color[0], config.bezier_curve_color[1], config.bezier_curve_color[2]));
+        self.draw_control_points(renderer, (config.control_points_color[0], config.control_points_color[1], config.control_points_color[2]));
+        self.draw_larp_point(renderer,  config.larp_ratio, (config.larp_point_color[0], config.larp_point_color[1], config.larp_point_color[2]));
     }
 
 }
