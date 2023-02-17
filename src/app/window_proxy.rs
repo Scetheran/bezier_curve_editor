@@ -1,10 +1,10 @@
 use glfw;
 
-pub struct WindowProxy<'a> {
+pub struct Window<'a> {
     window_ref: &'a mut glfw::Window
 }
 
-impl<'a> WindowProxy<'a> {
+impl<'a> Window<'a> {
     pub fn new(window: &'a mut glfw::Window) -> Self {
         Self {
             window_ref : window

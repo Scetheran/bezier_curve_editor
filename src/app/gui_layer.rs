@@ -3,7 +3,7 @@ use std::time::Instant;
 use imgui_opengl_renderer::Renderer;
 
 use crate::app::editor_config::EditorConfig;
-use crate::app::window_proxy::WindowProxy;
+use crate::app::window_proxy::Window;
 pub struct GUILayer {
     last_frame_time: Instant,
     imgui_renderer: Renderer,
@@ -13,7 +13,7 @@ pub struct GUILayer {
 }
 
 impl GUILayer {
-    pub fn new(mut window_proxy: WindowProxy) -> Self {
+    pub fn new(mut window_proxy: Window) -> Self {
         let mut imgui_context = imgui::Context::create();
         let imgui_renderer = Renderer::new(&mut imgui_context, |s| window_proxy.get_process_address(s) as _);
         imgui_context.style_mut().window_rounding = 0.0;
@@ -27,7 +27,7 @@ impl GUILayer {
         }
     }
 
-    pub fn transform_mouse_coordinates_for_editor(&self, window_proxy: WindowProxy) -> Option<(u32, u32)> {
+    pub fn transform_mouse_coordinates_for_editor(&self, window_proxy: Window) -> Option<(u32, u32)> {
         let (window_width, _) = window_proxy.get_size();
         let (mut mouse_x, mouse_y) = if let Some(mouse_pos) = window_proxy.get_mouse_pos() {
             (mouse_pos.0, mouse_pos.1)
@@ -42,11 +42,10 @@ impl GUILayer {
         }
 
         mouse_x = mouse_x - side_panel_width;
-        println!("Normalized mouse coords: ({:.3}, {:.3})", mouse_x, mouse_y);
         return Some((mouse_x, mouse_y));
     }
 
-    pub fn handle_user_input(&mut self, window_proxy: WindowProxy) {
+    pub fn handle_user_input(&mut self, window_proxy: Window) {
         let mut imgui_io = self.imgui_context.io_mut();
         let mut button_indeces: [bool; 5] = [false, false, false, false, false];
         button_indeces[0] = window_proxy.get_mouse_left_button_pressed();
@@ -59,7 +58,7 @@ impl GUILayer {
         imgui_io.mouse_down = button_indeces;
     }
 
-    pub fn render(&mut self, window_proxy: WindowProxy) {
+    pub fn render(&mut self, window_proxy: Window) {
         let imgui_io = self.imgui_context.io_mut();
 
         let now = Instant::now();

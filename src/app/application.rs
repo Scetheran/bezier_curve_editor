@@ -9,8 +9,10 @@ use glfw::WindowEvent;
 
 
 use crate::app::application_event::ApplicationEvent;
-use crate::app::window_proxy::WindowProxy;
+use crate::app::window_proxy;
+use crate::app::gl_renderer;
 use crate::app::gui_layer::GUILayer;
+use crate::app::editor_layer::EditorLayer;
 
 #[derive(Debug)]
 pub enum ApplicationError {
@@ -21,7 +23,9 @@ pub struct Application {
     glfw: glfw::Glfw,
     window: glfw::Window,
     events: Receiver<(f64, WindowEvent)>,
-    gui_layer: GUILayer
+    renderer: gl_renderer::Renderer,
+    gui_layer: GUILayer,
+    editor_layer: EditorLayer,
 }
 
 impl Application {
@@ -55,10 +59,11 @@ impl Application {
             gl::ClearColor(0.1, 0.1, 0.1, 1.0);
         }
 
-        let gui_layer = GUILayer::new(WindowProxy::new(&mut window));
-
+        let renderer = gl_renderer::Renderer::new(256, 5000);
+        let gui_layer = GUILayer::new(window_proxy::Window::new(&mut window));
+        let editor_layer = EditorLayer::new();
         Ok(
-            Self { glfw, window, events, gui_layer }
+            Self { glfw, window, events, renderer, gui_layer, editor_layer }
         )
     }
 
@@ -68,9 +73,10 @@ impl Application {
                 gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
             }
 
-            self.gui_layer.handle_user_input(WindowProxy::new(&mut self.window));
-            self.gui_layer.transform_mouse_coordinates_for_editor(WindowProxy::new(&mut self.window));
-            self.gui_layer.render(WindowProxy::new(&mut self.window));
+            self.gui_layer.handle_user_input(window_proxy::Window::new(&mut self.window));
+            self.gui_layer.transform_mouse_coordinates_for_editor(window_proxy::Window::new(&mut self.window));
+            self.gui_layer.render(window_proxy::Window::new(&mut self.window));
+            self.editor_layer.render(&mut self.renderer);
 
             self.window.swap_buffers();
 
@@ -118,7 +124,12 @@ impl Application {
                     }
                 }
             },
-            WindowEvent::FramebufferSize(width, height) => Some(ApplicationEvent::FramebufferResized { width: width as u32, height: height as u32 }),
+            WindowEvent::FramebufferSize(width, height) => {
+                unsafe {
+                    gl::Viewport(0, 0, width, height);
+                }
+                Some(ApplicationEvent::FramebufferResized { width: width as u32, height: height as u32 })
+            },
             _ => None
         }
     }
